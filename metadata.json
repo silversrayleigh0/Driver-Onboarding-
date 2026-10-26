@@ -1,0 +1,5 @@
+{
+  "name": "TruckTaxi Driver Onboarding",
+  "description": "AI-powered conversational onboarding system for TruckTaxi delivery partners.",
+  "requestFramePermissions": ["camera", "microphone", "geolocation"]
+}

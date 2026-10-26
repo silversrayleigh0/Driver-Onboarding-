@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: /drivers/{driverId}
+    // Fields:
+    //   - uid: string (required)
+    //   - fullName: string
+    //   - mobileNumber: string
+    //   - dateOfBirth: string (format: YYYY-MM-DD)
+    //   - city: string (enum: Chennai, Coimbatore, Madurai, Tiruppur)
+    //   - vehicleType: string (enum: Mini Truck, Closed Vehicle, Pickup, Maxi Truck 407, LCV)
+    //   - status: string (enum: registration_started, documents_submitted, verification_in_progress, action_required, approved, rejected)
+    //   - currentStage: number
+    //   - createdAt: string (ISO 8601)
+    //   - updatedAt: string (ISO 8601)
+    //
+    // Collection: /drivers/{driverId}/documents/{docId}
+    // Fields:
+    //   - driverId: string (required)
+    //   - type: string (enum: dl_front, dl_back, rc_book, insurance, puc, aadhaar_front, aadhaar_back, vehicle_front, vehicle_side, vehicle_cargo)
+    //   - filePath: string (URL)
+    //   - status: string (enum: uploaded, approved, rejected)
+    //   - rejectionReason: string (optional)
+    //   - uploadedAt: string (ISO 8601)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+        (request.auth.token.email == "mike.nijoe@gmail.com" && request.auth.token.email_verified == true)
+      );
+    }
+
+    function isValidDriver(data) {
+      return data.uid is string &&
+             data.status in ['registration_started', 'documents_pending', 'documents_submitted', 'verification_in_progress', 'action_required', 'approved', 'rejected'] &&
+             data.currentStage is number &&
+             (!('fullName' in data) || (data.fullName is string && data.fullName.size() < 100)) &&
+             (!('mobileNumber' in data) || (data.mobileNumber is string && data.mobileNumber.size() < 15)) &&
+             (!('city' in data) || data.city in ['Chennai', 'Coimbatore', 'Madurai', 'Tiruppur']) &&
+             (!('vehicleType' in data) || data.vehicleType in ['Mini Truck', 'Pickup', 'Maxi Truck 407', 'LCV']) &&
+             (!('isClosedVehicle' in data) || data.isClosedVehicle is bool);
+    }
+
+    function isValidDocument(data) {
+      return data.driverId is string &&
+             data.type in ['dl_front', 'dl_back', 'rc_book', 'insurance', 'puc', 'aadhaar_front', 'aadhaar_back', 'vehicle_front', 'vehicle_side', 'vehicle_cargo'] &&
+             data.filePath is string &&
+             data.status in ['uploaded', 'approved', 'rejected'] &&
+             (!('rejectionReason' in data) || (data.rejectionReason is string && data.rejectionReason.size() < 500));
+    }
+
+    // Rules
+    match /drivers/{driverId} {
+      allow read: if isOwner(driverId) || isAdmin();
+      allow create: if isOwner(driverId) && isValidDriver(request.resource.data);
+      allow update: if (isOwner(driverId) && isValidDriver(request.resource.data) && 
+                       (request.resource.data.status == resource.data.status || 
+                        request.resource.data.status in ['documents_submitted', 'documents_pending', 'registration_started'])) || isAdmin();
+      allow delete: if isOwner(driverId) || isAdmin();
+
+      match /documents/{docId} {
+        allow read: if isOwner(driverId) || isAdmin();
+        allow create: if isOwner(driverId) && isValidDocument(request.resource.data);
+        allow update: if isAdmin();
+        allow delete: if isOwner(driverId) || isAdmin();
+      }
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isAdmin();
+    }
+  }
+}

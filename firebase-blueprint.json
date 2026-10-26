@@ -1,0 +1,54 @@
+{
+  "entities": {
+    "Driver": {
+      "title": "Driver",
+      "description": "A delivery partner on the TruckTaxi platform.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "fullName": { "type": "string" },
+        "mobileNumber": { "type": "string" },
+        "dateOfBirth": { "type": "string", "format": "date" },
+        "city": { "type": "string", "enum": ["Chennai", "Coimbatore", "Madurai", "Tiruppur"] },
+        "vehicleType": { "type": "string", "enum": ["Mini Truck", "Pickup", "Maxi Truck 407", "LCV"] },
+        "isClosedVehicle": { "type": "boolean" },
+        "vehicleRegNumber": { "type": "string" },
+        "experienceYears": { "type": "integer" },
+        "preferredZones": { "type": "array", "items": { "type": "string" } },
+        "bankAccount": { "type": "string" },
+        "ifscCode": { "type": "string" },
+        "upiId": { "type": "string" },
+        "referral": { "type": "string" },
+        "status": { "type": "string", "enum": ["registration_started", "documents_pending", "documents_submitted", "verification_in_progress", "action_required", "approved", "rejected"] },
+        "currentStage": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "status", "currentStage"]
+    },
+    "Document": {
+      "title": "Document",
+      "description": "An uploaded document for driver onboarding.",
+      "type": "object",
+      "properties": {
+        "driverId": { "type": "string" },
+        "type": { "type": "string", "enum": ["dl_front", "dl_back", "rc_book", "insurance", "puc", "aadhaar_front", "aadhaar_back", "vehicle_front", "vehicle_side", "vehicle_cargo"] },
+        "filePath": { "type": "string" },
+        "status": { "type": "string", "enum": ["uploaded", "approved", "rejected"] },
+        "rejectionReason": { "type": "string" },
+        "uploadedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["driverId", "type", "filePath", "status"]
+    }
+  },
+  "firestore": {
+    "/drivers/{driverId}": {
+      "schema": "Driver",
+      "description": "Driver profile documents."
+    },
+    "/drivers/{driverId}/documents/{docId}": {
+      "schema": "Document",
+      "description": "Documents uploaded by a driver."
+    }
+  }
+}
